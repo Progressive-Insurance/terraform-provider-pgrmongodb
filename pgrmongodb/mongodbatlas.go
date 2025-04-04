@@ -194,6 +194,14 @@ func executeAppServicesFunctionByName(bearer_token string, projectID string, app
 }
 
 func createAppServicesFunction(bearer_token string, projectID string, appServicesAppID string, functionName string, functionCode string) (string, error) {
+	return manageAppServicesFunction(bearer_token, projectID, appServicesAppID, functionName, functionCode, "POST", "")
+}
+
+func updateAppServicesFunction(bearer_token string, projectID string, appServicesAppID string, functionName string, functionCode string, functionID string) (string, error) {
+	return manageAppServicesFunction(bearer_token, projectID, appServicesAppID, functionName, functionCode, "PUT", functionID)
+}
+
+func manageAppServicesFunction(bearer_token string, projectID string, appServicesAppID string, functionName string, functionCode string, httpMethod string, functionID string) (string, error) {
 	// normalize function code
 	functionCode = strings.Replace(functionCode, "\n", "\\n", -1)
 	functionCode = strings.Replace(functionCode, "\t", "\\t", -1)
@@ -206,7 +214,14 @@ func createAppServicesFunction(bearer_token string, projectID string, appService
 	  	}
 	`, functionName, functionCode)
 
-	r, err := httpRequestWithBearerAuth(bearer_token, "POST", fmt.Sprintf("https://services.cloud.mongodb.com/api/admin/v3.0/groups/%s/apps/%s/functions", projectID, appServicesAppID), jsonStr, 10)
+	url := ""
+	if httpMethod == "POST" {
+		url = fmt.Sprintf("https://services.cloud.mongodb.com/api/admin/v3.0/groups/%s/apps/%s/functions", projectID, appServicesAppID)
+	} else if httpMethod == "PUT" {
+		url = fmt.Sprintf("https://services.cloud.mongodb.com/api/admin/v3.0/groups/%s/apps/%s/functions/%s", projectID, appServicesAppID, functionID)
+	}
+
+	r, err := httpRequestWithBearerAuth(bearer_token, httpMethod, url, jsonStr, 10)
 	if err != nil {
 		return "", err
 	}
@@ -223,6 +238,8 @@ func createAppServicesFunction(bearer_token string, projectID string, appService
 		}
 		created_function_id := respjson["_id"].(string)
 		return created_function_id, err
+	} else if r.StatusCode == http.StatusNoContent {
+		return functionID, err
 	} else {
 		return "", fmt.Errorf("unable to create app function %s. Got statuscode: %d. Using json: %s", functionName, r.StatusCode, jsonStr)
 	}

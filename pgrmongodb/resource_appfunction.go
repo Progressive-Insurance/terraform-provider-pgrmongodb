@@ -50,7 +50,7 @@ func (r *appFunctionResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Description: "identifier for resource.",
 				Computed:    true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"project_id": schema.StringAttribute{
@@ -196,19 +196,13 @@ func (r *appFunctionResource) Update(ctx context.Context, req resource.UpdateReq
 	tflog.Info(ctx, "checking mongodb atlas app services function for deltas")
 	if hasChange {
 		tflog.Info(ctx, "updating mongodb atlas app services function")
-		function_id, err := createAppServicesFunction(r.bearer_token, plan.ProjectID.ValueString(), plan.AppServicesAppID.ValueString(), plan.FunctionName.ValueString(), plan.FunctionCode.ValueString())
+
+		function_id, err := updateAppServicesFunction(r.bearer_token, plan.ProjectID.ValueString(), plan.AppServicesAppID.ValueString(), plan.FunctionName.ValueString(), plan.FunctionCode.ValueString(), plan.ID.ValueString())
+
 		if err != nil {
 			resp.Diagnostics.AddError(
-				"Error Creating App Services Function",
-				"Could not create MongoDB Atlas App Services Function. Received error: "+err.Error(),
-			)
-			return
-		}
-		err = deleteAppServicesFunction(r.bearer_token, state.ProjectID.ValueString(), state.AppServicesAppID.ValueString(), state.ID.ValueString())
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Error Deleting App Services Function",
-				"Could not delete MongoDB Atlas App Services Function. Received error: "+err.Error(),
+				"Error Updating App Services Function",
+				"Could not update MongoDB Atlas App Services Function. Received error: "+err.Error(),
 			)
 			return
 		}
@@ -252,6 +246,7 @@ func (r *appFunctionResource) Delete(ctx context.Context, req resource.DeleteReq
 func (r *appFunctionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	idParts := strings.Split(req.ID, ",")
 
+	tflog.Info(ctx, "importing mongodb atlas app services function")
 	if len(idParts) != 3 {
 		resp.Diagnostics.AddError(
 			"Error Importing App Services Function",
