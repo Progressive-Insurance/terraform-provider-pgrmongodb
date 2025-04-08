@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 var function_1 = `exports = async (changeEvent) => {
@@ -34,12 +35,38 @@ func TestAccPGRMongoDBAppFunction(t *testing.T) {
 					resource.TestCheckResourceAttrSet("pgrmongodb_appfunction.test", "appservices_app_id"),
 				),
 			},
+			// ImportState testing
+			{
+				ResourceName:      "pgrmongodb_appfunction.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					rs, ok := s.RootModule().Resources["pgrmongodb_appfunction.test"]
+					if !ok {
+						return "", fmt.Errorf("Not found: %s", "pgrmongodb_appfunction.test")
+					}
+					projectID := rs.Primary.Attributes["project_id"]
+					appServicesAppID := rs.Primary.Attributes["appservices_app_id"]
+					functionID := rs.Primary.Attributes["id"]
+					return fmt.Sprintf("%s,%s,%s", projectID, appServicesAppID, functionID), nil
+				},
+			},
 			// Update and Read testing
 			{
 				Config: providerConfig + testAccCheckPGRMongoDBAppFunctionConfig(project_id, appservices_app_id, "my_tf_function", 2),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("pgrmongodb_appfunction.test", "project_id"),
 					resource.TestCheckResourceAttr("pgrmongodb_appfunction.test", "function_name", "my_tf_function"),
+					resource.TestCheckResourceAttr("pgrmongodb_appfunction.test", "function_code", function_2),
+					resource.TestCheckResourceAttrSet("pgrmongodb_appfunction.test", "appservices_app_id"),
+				),
+			},
+			// Update and Read testing
+			{
+				Config: providerConfig + testAccCheckPGRMongoDBAppFunctionConfig(project_id, appservices_app_id, "my_tf_function_2", 2),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("pgrmongodb_appfunction.test", "project_id"),
+					resource.TestCheckResourceAttr("pgrmongodb_appfunction.test", "function_name", "my_tf_function_2"),
 					resource.TestCheckResourceAttr("pgrmongodb_appfunction.test", "function_code", function_2),
 					resource.TestCheckResourceAttrSet("pgrmongodb_appfunction.test", "appservices_app_id"),
 				),
